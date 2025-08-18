@@ -8,7 +8,7 @@ import { getToken } from '../utils/storageHandler';
 import Navbar from '../components/Navbar';
 import { useSelector } from 'react-redux';
 
-const socket = io('http://localhost:5000', {
+const socket = io('https://talkrio.vercel.app', {
   auth: { token: getToken() },
 });
 
