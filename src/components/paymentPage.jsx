@@ -17,7 +17,7 @@ import { processPaymentAPI } from "../services/paymentServices"; // Import from 
 import { toast } from "react-toastify";
 
 // Debug Stripe key
-console.log("Stripe Publishable Key:", import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 // Payment Form Component
