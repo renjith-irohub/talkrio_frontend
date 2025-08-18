@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
-import { Switch } from "../components/ui/switch";
+import { Switch } from "../components/ui/Switch";
 import { CheckCircle, XCircle } from "lucide-react";
 
 const ContentModerator = () => {
