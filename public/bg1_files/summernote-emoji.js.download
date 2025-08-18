@@ -1,0 +1,67 @@
+$(function() {
+    $.extend($.summernote.plugins, {
+        'emoji': function (context) {
+            context.memo('button.emoji', EmojiButton);
+            
+            var emojiPicker = new EmojiPicker(onSelectEmoji);
+
+            this.events = {
+                'summernote.init': function () {
+                    addListeners();
+                }
+            };
+
+            function addListeners() {
+                context.layoutInfo.editable.on('blur', function() {
+                    var selection = window.getSelection();
+                    if (selection.rangeCount === 0) return;
+        
+                    var range = selection.getRangeAt(0);
+        
+                    emojiPicker.targetTextLastRange = range;
+                    emojiPicker.targetTextSelection = selection;
+                });
+            }
+
+            function EmojiButton() {
+                var ui = $.summernote.ui;
+                var button = ui.button({
+                    contents: '<i class="far fa-smile"></i>',
+                    tooltip: 'Emoji Picker',
+                    click: function() {
+                        emojiPicker.renderPicker();
+                    }
+                });
+
+                return button.render();
+            }
+
+            function onSelectEmoji(emoji) {
+                var range = emojiPicker.targetTextLastRange;
+                var selection = emojiPicker.targetTextSelection;
+
+                if (!range) {
+                    context.invoke('editor.insertText', emoji);
+                    return;
+                }
+
+                var emojiNode = document.createTextNode(emoji);
+
+                emojiPicker.targetTextLastRange.deleteContents();
+                emojiPicker.targetTextLastRange.insertNode(emojiNode);
+
+                emojiPicker.targetTextLastRange.setStartAfter(emojiNode);
+                emojiPicker.targetTextLastRange.setEndAfter(emojiNode);
+
+                if (selection) {
+                    selection.removeAllRanges();
+                    selection.addRange(emojiPicker.targetTextLastRange);
+                }
+
+                // put the value in the note state
+                context.layoutInfo.note.val(context.invoke('code'));
+                context.layoutInfo.note.change();
+            }
+        }
+    });
+});

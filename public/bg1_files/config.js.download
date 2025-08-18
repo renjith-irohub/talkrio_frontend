@@ -1,0 +1,84 @@
+window.summerNoteConfig = function ($container,preset) {
+    var presets = {
+        default: [
+            // [groupName, [list of button]]
+            ['style', ['bold', 'italic', 'underline', 'clear']],
+            ['font', ['strikethrough', 'superscript', 'subscript']],
+            ['fontsize', ['fontsize']],
+            ['color', ['forecolor']],
+            ['para', ['ul', 'ol', 'paragraph']],
+            //['height', ['height']]
+            ['insert', ['picture', 'link', 'video', 'hr', 'emoji','tenorgif']],
+            ['misc', ['fullscreen']]
+        ],
+        userbio: [
+            // [groupName, [list of button]]
+            ['style', ['bold', 'italic', 'underline', 'clear']],
+            ['font', ['strikethrough', 'superscript', 'subscript']],
+            ['fontsize', ['fontsize']],
+            ['color', ['forecolor']],
+            ['para', ['ul', 'ol', 'paragraph']],
+            //['height', ['height']]
+            ['insert', ['hr', 'emoji']],
+            ['misc', ['fullscreen']]
+        ]
+    };
+    if(typeof preset=='undefined') {
+        var preset = presets.default;
+    }else{
+        var preset = presets[preset];
+    }
+    return {
+        toolbar: preset,
+        dialogsInBody: true,
+        height: "200px",
+        fontSizes: ['12','13','14','15','16','17','18','19','20','21','22','23'],
+        callbacks: {
+            onInit: function () { $("button[data-toggle='dropdown']").each(function (index) { $(this).removeAttr("data-toggle").attr("data-bs-toggle", "dropdown"); }); },//#dropdown fix from https://github.com/summernote/summernote/issues/4170#issuecomment-1131462798
+            onImageUpload: function (files) {
+                var editor = $(this);
+                var _data = new FormData();
+                var $loadingDiv = $('<div class="loading-full-page"><i class="fa-solid fa-spinner fa-spin text-white fa-3x" aria-hidden="true"></i><span class="sr-only">Loading...</span></div>');
+                _data.append("file", files[0]);
+                $.ajax({
+                    url: '/apiv2/forum/uploader/',
+                    data: _data,
+                    method: 'POST',
+                    contentType: false,
+                    processData: false,
+                    cache: false,
+                    success: function (resp) {
+                        var img = document.createElement('img');
+                        img.src = resp.url;
+                        //img.classList.add('mw-100');
+                        editor.summernote('insertNode', img)
+                    },
+                    dataType: 'json',
+                    beforeSend: function () {
+                        $('body').prepend($loadingDiv);
+                    },
+                    complete: function () {
+                        $loadingDiv.remove();
+                    },
+                    error: function (xhr,status,error) {
+                        var errors = [];
+                        if(xhr.responseJSON && xhr.responseJSON.errors && Array.isArray(xhr.responseJSON.errors)){
+                            for(var i = 0; i < xhr.responseJSON.errors.length; i++){
+                                var e = xhr.responseJSON.errors[i];
+                                if(e.message){
+                                    errors.push(e.message);
+                                }
+                            }
+                        }
+
+                        if(!errors.length){
+                            errors.push('An unknown error has occured.');
+                        } 
+                        
+                        bootbox.alert(errors.join(' '));
+                    }
+                });
+            }
+        }
+    }
+}

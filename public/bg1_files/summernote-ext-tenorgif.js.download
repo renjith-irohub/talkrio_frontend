@@ -1,0 +1,210 @@
+(function(factory){
+    if (typeof define === 'function' && define.amd) {
+        // AMD. Register as an anonymous module.
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        // Node/CommonJS
+        module.exports = factory(require('jquery'));
+    } else {
+        // Browser globals
+        factory(window.jQuery);
+    }
+})(function($){
+    $.extend(true,$.summernote.lang,{
+        'en-US':{
+            tenorgif:{
+                search: 'Search',
+                featuredTitle: 'Featured GIFs',
+                title: 'Add GIFs to your content'
+            }
+        }
+    });
+
+    $.extend($.summernote.options,{
+        tenorgif:{
+            icon: '<i class="note-icon-magic"/>',
+           tooltip: 'Add GIF',
+            endpoints:{
+                featured: '/apiv2/utility/tenorgif/featured',
+                search:'/apiv2/utility/tenorgif/search'
+            }
+        }
+    });    
+
+    $.extend($.summernote.plugins,{
+        'tenorgif':function(context){
+            var self = this;
+            var ui = $.summernote.ui,
+            $note = context.layoutInfo.note,
+            $editor = context.layoutInfo.editor,
+            $editable = context.layoutInfo.editable,
+            $toolbar = context.layoutInfo.toolbar;
+            var options = context.options;
+            var lang = options.langInfo;
+
+            context.memo('button.tenorgif',function(){
+                var button = ui.button({
+                    contents: options.tenorgif.icon,
+                    tooltip: options.tenorgif.tooltip,
+                    codeviewKeepButton: false,
+                    click: function(e){
+                        self.ui.showDialog(self.$dialog);
+                        self.loadFeaturedContents($(".tenor-gif-list",self.$dialog));
+                        self.bindLabels();
+                    },
+                });
+                
+                return button.render();
+            });
+            self.ui = ui;
+            var body = '';
+            this.destroy = function () {
+                ui.hideDialog(this.$dialog);
+                this.$dialog.remove();
+            };
+            self.initialize = function(){
+                var $container = options.dialogsInBody ? $(document.body) : $editor;
+
+                body = '<div class="mb-3">'+
+                    '<input type="text" placeholder="Search for a GIF and press enter" name="term" id="tenorgif-term" class="form-control"/>'+
+                    '<div class="tenor-gif-list" style="max-height:300px;overflow-y:scroll;margin-top:12px">'+
+                    '</div>'+
+                    '<span class="tenor-loading">Loading...</span>'+
+                    '</div>';
+                var footer = '<div class="d-flex  justify-content-between w-100">'+
+                    '<span>Powered By <a href="https://tenor.com" target="_blank">Tenor</a></span> '+
+                    '</div>';
+
+                self.$dialog = self.ui.dialog({
+                    title: lang.tenorgif.title,
+                    body: body,
+                    footer: footer
+                }).render().appendTo($container);
+                self.bindLabels();
+                self.bindEnterKey($('#tenorgif-term'));
+
+                //self.ui.onDialogShown(this.$dialog, function() {
+                //    console.dir('shown');
+                //});
+            };
+            this.loadFeaturedContents = function(wrapper,pos) {
+                $.ajax({
+                    url:options.tenorgif.endpoints.featured,
+                    method: 'GET',
+                    data: 'pos='+(pos?pos:''),
+                    success: function(r){
+                        self.unbindClickEvent();
+                        self.unbindLoadmoreButtonEvent();
+                        $('.tenor-gif-loadmore',self.$dialog).remove();
+
+                        if(pos){
+                            wrapper.append(r.message);
+                        }else{
+                            var content = '<b>Featured GIFs</b><br/>'+r.message;
+                            wrapper.html(content);
+                        }
+
+                        self.bindClickEvent();
+                        self.bindLoadmoreButtonEvent();
+                        $('.tenor-loading',self.$dialog).hide();
+                    },
+                    beforeSend: function(){
+                        $('.tenor-loading',self.$dialog).show();
+                    }
+                });
+            }
+            this.submitSearch = function(term,pos){
+                if(term.length<3){
+                    alert("Search term cannot be less than 3 chars");
+                    return;
+                }
+                $.ajax({
+                    url: options.tenorgif.endpoints.search,
+                    data: 'term='+term+'&pos='+(pos?pos:''),
+                    method: 'GET',
+                    error: function(){
+                        $(".tenor-gif-list",self.$dialog).html('<div class="alert alert-danger">Something went wrong. Please try again.</div>');
+                        self.bindLabels();
+                    },
+                    success: function(r){
+                        var wrapper = $(".tenor-gif-list",this.$dialog);
+                        self.unbindClickEvent();
+                        self.unbindLoadmoreButtonEvent();
+                        $('.tenor-gif-loadmore',self.$dialog).remove();
+
+                        if(typeof pos !== 'undefined'){
+                            wrapper.append(r.message);
+                        }else{
+                            var content = '<b>Search Results for `'+term+'`</b><br/>'+r.message;
+                            wrapper.html(content);
+                        }
+
+                        $('.tenor-loading',self.$dialog).hide();
+                        self.bindClickEvent();
+                        self.bindLoadmoreButtonEvent();
+                        self.bindLabels();
+                    },
+                    beforeSend: function(){
+                        if(typeof pos !=='undefined'){
+                            $(".tenor-gif-list",self.$dialog).html('<p>Searching gifs for `'+term+'`...</p>');
+                        }else{
+                            $('.tenor-loading',self.$dialog).show();
+                        }
+                    }
+                });
+            }
+            this.show = function(){
+                alert(1);
+            }
+            this.bindEnterKey = function ($input) {
+
+                $input.on('keypress', function (event) {
+                    if (event.keyCode === 13) {
+                        var term = $(this).val();
+                        self.submitSearch(term);
+                    }
+                });
+            };
+            this.bindLoadmoreButtonEvent = function(){
+                $(document).on('click','.tenor-gif-loadmore',function(event){
+                    event.preventDefault();
+                    var pos = $(this).data('next');
+                    var type = $(this).data('type');
+                    var term = $(this).data('term');
+                    if(type=='search'){
+                        self.submitSearch(term,pos);
+                    }else if(type=='featured'){
+                        self.loadFeaturedContents($('.tenor-gif-list',self.$dialog),pos);
+                    }else{
+                        alert('List type is wrong for load more action');
+                    }
+                });
+            }
+            this.unbindLoadmoreButtonEvent = function(){
+                $(document).off('click','.tenor-gif-loadmore');
+            }
+            this.bindClickEvent = function(){
+                $(document).on('click','.tenor-gif-item',function(){
+                    context.invoke('editor.saveRange');
+                    context.invoke('editor.restoreRange');
+                    var item_url = $(this).data('item-url');
+                    var item_alt = $(this).data('item-url-alt');
+                    var node = $("<img src='"+item_url+"' data-src-static='"+item_alt+"'/>")[0];
+
+                    context.invoke('editor.insertNode', node);
+                    self.ui.hideDialog(self.$dialog);
+                });
+            }
+            this.unbindClickEvent = function(){
+                $(document).off('click','.tenor-gif-item');
+            }
+
+            this.bindLabels = function () {
+                self.$dialog.find('.form-control:first').focus().select();
+                self.$dialog.find('label').on('click', function () {
+                    $(this).parent().find('.form-control:first').focus();
+                });
+            };
+        }
+    });
+});
