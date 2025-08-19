@@ -21,6 +21,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import io from "socket.io-client";
+import { BASE_URL } from "../utils/urls";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -394,7 +395,7 @@ const TalkrioAIChat = ({ onClose }) => {
 
   useEffect(() => {
     let isMounted = true;
-    const socketUrl = "http://localhost:5000";
+    const socketUrl = `${BASE_URL}`;
     socketRef.current = io(socketUrl, {
       withCredentials: true,
       transports: ["websocket"],
